@@ -365,12 +365,13 @@ function setupCanvas(canvas) {
 }
 
 function drawAxes({ ctx, W, H, dpr }, pad, { xTicks, yTicks, title }) {
-  ctx.strokeStyle = '#999';
+  const muted = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#6b6d75';
+  ctx.strokeStyle = muted;
   ctx.lineWidth = dpr;
   ctx.beginPath();
   ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H - pad.b); ctx.lineTo(W - pad.r, H - pad.b);
   ctx.stroke();
-  ctx.fillStyle = '#555';
+  ctx.fillStyle = muted;
   ctx.font = `${11 * dpr}px ui-monospace, monospace`;
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';

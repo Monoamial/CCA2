@@ -6,6 +6,7 @@
   <title>Cluster–cluster aggregation</title>
   <meta name="description" content="Interactive simulation of cluster–cluster aggregation on the periodic square lattice." />
   <link rel="stylesheet" href="styles.css" />
+  <script>if (new URLSearchParams(location.search).has('embed')) document.documentElement.dataset.embed = '';</script>
 </head>
 <body>
   <main class="app">
@@ -115,5 +116,6 @@
     </div>
   </main>
   <script type="module" src="src/app.js"></script>
+  <script type="module" src="src/embed.js"></script>
 </body>
 </html>

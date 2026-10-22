@@ -6,6 +6,7 @@
   --line: #d6d2c8;
   --accent: #2a9d8f;
   --accent-ink: #ffffff;
+  --field: #ffffff;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
 }
@@ -35,7 +36,7 @@ h2 { margin: 18px 0 10px; font: 500 11px var(--mono); letter-spacing: 0.12em; te
 .control-label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; font-size: 13px; }
 .control-label em { font-style: italic; font-family: Georgia, "Times New Roman", serif; }
 .control-label small { font-weight: 400; color: var(--muted); font-size: 11px; }
-.control input[type="number"], .control input[type="text"] { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; background: #fff; font-family: var(--mono); font-size: 13px; }
+.control input[type="number"], .control input[type="text"] { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--field); font-family: var(--mono); font-size: 13px; }
 .control input:focus { outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent); border-color: var(--accent); }
 input[type="range"] { width: 100%; margin: 0; accent-color: var(--accent); }
 .inline { display: flex; gap: 6px; }
@@ -45,8 +46,8 @@ input[type="range"] { width: 100%; margin: 0; accent-color: var(--accent); }
 .choice label { display: flex; align-items: center; gap: 6px; }
 .value { font: 500 11px var(--mono); color: var(--muted); font-weight: 400; }
 
-button { height: 34px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 4px; background: #fff; cursor: pointer; font-weight: 600; font-size: 12px; }
-button:hover { background: #ecebe6; }
+button { height: 34px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 4px; background: var(--field); cursor: pointer; font-weight: 600; font-size: 12px; }
+button:hover { filter: brightness(0.94); }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 button.primary:hover { filter: brightness(0.94); }
 button.secondary { background: transparent; }
@@ -60,7 +61,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 .status { margin: 4px 0 0; font: 500 11px var(--mono); color: var(--muted); }
 .hint { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
 .points { display: grid; grid-template-columns: auto 1fr 1fr; gap: 6px; align-items: center; margin-bottom: 10px; }
-.points input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; background: #fff; font-family: var(--mono); font-size: 13px; }
+.points input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--field); font-family: var(--mono); font-size: 13px; }
 .point-tag { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 50%; font: 700 11px var(--mono); color: #15161a; }
 .point-tag.a { background: #ff5c8a; }
 .point-tag.b { background: #3ddc97; }
@@ -90,8 +91,8 @@ progress { flex: 1; min-width: 120px; height: 8px; accent-color: var(--accent); 
 .results .toolbar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin: 10px 0; font-size: 13px; }
 .results .toolbar label { display: inline-flex; align-items: center; gap: 6px; }
 .results .toolbar em { font-family: Georgia, "Times New Roman", serif; }
-.results select { padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
-.plot { width: 100%; height: 300px; display: block; background: #fff; border: 1px solid var(--line); border-radius: 4px; cursor: default; image-rendering: auto; }
+.results select { padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--field); }
+.plot { width: 100%; height: 300px; display: block; background: var(--field); border: 1px solid var(--line); border-radius: 4px; cursor: default; image-rendering: auto; }
 #histogram { height: 240px; }
 .summary { font: 500 12px var(--mono); color: var(--muted); margin: 0 0 8px; }
 .chart-heading { margin-top: 26px; }
@@ -100,3 +101,31 @@ progress { flex: 1; min-width: 120px; height: 8px; accent-color: var(--accent); 
 .stat { display: inline-flex; align-items: baseline; gap: 7px; }
 .stat-label { font-size: 12px; color: var(--muted); }
 .stat-value { font: 500 14px var(--mono); color: var(--ink); }
+
+/* --- embedded mode (?embed): chalkboard palette, no masthead, layout that fits a narrow column --- */
+html[data-embed] {
+  color-scheme: dark; /* must match the embedding page, or the browser paints the frame opaque */
+  --ink: #f2efe6;
+  --muted: #8c9690;
+  --paper: transparent;
+  --panel: #25322f;
+  --line: #3a4a45;
+  --field: #1f2a2e;
+  --accent: #8fd3c4;
+  --accent-ink: #1f2a2e;
+}
+html[data-embed] .app { width: 100%; padding: 0; }
+html[data-embed] .masthead { display: none; }
+html[data-embed] .layout { grid-template-columns: 1fr 1fr; }
+html[data-embed] .stage { grid-column: 1 / -1; grid-row: 1; width: min(100%, 620px); justify-self: center; }
+html[data-embed] .controls { grid-row: 2; }
+html[data-embed] .readouts { grid-row: 2; }
+@media (max-width: 560px) {
+  html[data-embed] .layout { grid-template-columns: 1fr; }
+  html[data-embed] .readouts { grid-row: 3; }
+}
+html[data-embed] canvas { background: #15161a; }
+html[data-embed] button { border-color: var(--line); }
+html[data-embed] button.primary { color: var(--accent-ink); }
+html[data-embed] .plot { background: #1f2a2e; }
+html[data-embed] .point-tag { color: #15161a; }

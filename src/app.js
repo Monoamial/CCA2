@@ -137,14 +137,15 @@ function frame(now) {
   if (state.mode === 'playing') {
     const speed = speedPerSecond();
     state.budget = Math.min(state.budget + speed * dt, Math.max(1, speed));
-    const deadline = now + 10;
+    // Deadlines use performance.now(): inside an iframe the rAF timestamp can sit on another clock.
+    const deadline = performance.now() + 10;
     while (state.budget >= 1 && !model.isDone() && performance.now() < deadline) {
       doStep();
       state.budget -= 1;
     }
     if (model.isDone()) setMode('paused');
   } else if (state.mode === 'skipping') {
-    const deadline = now + 14;
+    const deadline = performance.now() + 14;
     while (!model.isDone() && performance.now() < deadline) doStep();
     if (model.isDone()) setMode('paused');
   }
