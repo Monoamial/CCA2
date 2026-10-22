@@ -9,7 +9,9 @@ const BORDER = 'rgba(0, 0, 0, 0.55)';
 const DIM = 'rgba(22, 23, 28, 0.8)';
 const SKELETON = '#ffffff';
 const SKELETON_FAINT = 'rgba(255, 255, 255, 0.32)';
-const PATH = '#ffd166';
+// The A–B path is drawn as a dark casing with a white core, so it reads on every palette colour.
+const PATH_CASING = 'rgba(20, 20, 24, 0.85)';
+const PATH_CORE = '#ffffff';
 const POINT_A = '#ff5c8a';
 const POINT_B = '#3ddc97';
 const GLOW = 'rgba(255, 255, 255, 0.35)';
@@ -234,7 +236,9 @@ export class Renderer {
       path.moveTo(x1 * c + h, y1 * c + h);
       path.lineTo(x1 * c + h + DIRS[OPPOSITE[d]][0] * h, y1 * c + h + DIRS[OPPOSITE[d]][1] * h);
     }
-    this.strokePath(path, PATH, Math.max(1.5, this.cell * 0.3));
+    const core = Math.max(1.5 * this.dpr, this.cell * 0.28);
+    this.strokePath(path, PATH_CASING, core + 3 * this.dpr);
+    this.strokePath(path, PATH_CORE, core);
   }
 
   /** The bond formed by the most recent event: a glowing segment with rings at both endpoints. */

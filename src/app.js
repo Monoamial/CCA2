@@ -96,6 +96,7 @@ function resetModel() {
   state.budget = 0;
   state.colorHistory = [];
   state.points = state.points.map((id) => (id !== null && id < state.model.N && state.model.siteOf[id] !== -1 ? id : null));
+  syncPointInputs(true);
   syncPointInputs();
   setMode('paused');
   state.dirty = true;
@@ -218,12 +219,17 @@ function setPoint(i, v) {
   return true;
 }
 
-/** Keep the coordinate inputs showing where the marked particles are now (unless being edited). */
-function syncPointInputs() {
+/**
+ * Keep the coordinate inputs showing where the marked particles are now. An
+ * unset point leaves its inputs alone (so half-typed coordinates survive)
+ * unless `clearUnset` is given.
+ */
+function syncPointInputs(clearUnset = false) {
   const { model } = state;
   const sites = pointSites();
   const pairs = [[ui.ax, ui.ay, sites[0]], [ui.bx, ui.by, sites[1]]];
   for (const [xi, yi, v] of pairs) {
+    if (v === null && !clearUnset) continue;
     if (document.activeElement === xi || document.activeElement === yi) continue;
     const [x, y] = v === null ? ['', ''] : model.coords(v);
     if (String(xi.value) !== String(x)) xi.value = x;
@@ -285,7 +291,7 @@ ui.view.forEach((r) => r.addEventListener('change', () => {
 ui.clearPoints.addEventListener('click', () => {
   state.points = [null, null];
   state.nextPoint = 0;
-  syncPointInputs();
+  syncPointInputs(true);
   state.dirty = true;
 });
 
