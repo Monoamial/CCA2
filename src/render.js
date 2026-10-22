@@ -21,9 +21,14 @@ const GLOW_CORE = '#ffffff';
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+    this.screenCtx = canvas.getContext('2d');
+    this.ctx = this.screenCtx; // current drawing target: the screen, or the base layer while it is rebuilt
     this.layer = document.createElement('canvas'); // L×L pixels, one per cell
     this.layerCtx = this.layer.getContext('2d');
+    this.base = document.createElement('canvas'); // the map without overlays, reused while the model is unchanged
+    this.baseCtx = this.base.getContext('2d');
+    this.baseModel = null;
+    this.baseKey = null;
     this.L = 0;
     this.cell = 1;
   }
@@ -37,6 +42,9 @@ export class Renderer {
     const px = this.cell * L;
     this.canvas.width = px;
     this.canvas.height = px;
+    this.base.width = px;
+    this.base.height = px;
+    this.baseKey = null;
     this.canvas.style.width = `${px / dpr}px`;
     this.canvas.style.height = `${px / dpr}px`;
     this.layer.width = L;
@@ -63,12 +71,26 @@ export class Renderer {
    * @param {object|null} view.lastEvent      most recent applied event (its bond is highlighted)
    */
   draw(model, colors, view) {
-    const { ctx, canvas } = this;
-    ctx.fillStyle = BG;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // The base map only changes when the model does (cursor = events applied), so
+    // hover and point changes reuse it instead of redrawing every cell and border.
+    const key = `${view.mode}:${model.cursor}`;
+    if (model !== this.baseModel || key !== this.baseKey) {
+      this.ctx = this.baseCtx;
+      this.ctx.fillStyle = BG;
+      this.ctx.fillRect(0, 0, this.base.width, this.base.height);
+      if (view.mode === 'solid') this.drawSolidBase(model, colors);
+      else this.drawSkeletonBase(model, colors);
+      this.ctx = this.screenCtx;
+      this.baseModel = model;
+      this.baseKey = key;
+    }
+    const { ctx } = this;
+    ctx.drawImage(this.base, 0, 0);
 
-    if (view.mode === 'solid') this.drawSolid(model, colors, view.hoverRoot);
-    else this.drawSkeleton(model, colors, view.hoverRoot);
+    if (view.hoverRoot !== null) {
+      if (view.mode === 'solid') this.drawSolidHover(model, colors, view.hoverRoot);
+      else this.drawSkeletonHover(model, colors, view.hoverRoot);
+    }
 
     if (view.path) this.drawPath(model, view.path);
     if (view.lastEvent && view.lastEvent.type === 'merge') this.drawLastBond(model, view.lastEvent);
@@ -77,34 +99,36 @@ export class Renderer {
     if (view.points[1] !== null) this.drawMarker(model, view.points[1], 'B', POINT_B);
   }
 
-  drawSolid(model, colors, hoverRoot) {
-    const { ctx } = this;
+  drawSolidBase(model, colors) {
     this.fillCells(model, colors, null, 1);
-    this.strokePath(this.borderPath(model, null, 0), BORDER, this.dpr);
-    if (hoverRoot === null) return;
+    this.fillPath(this.borderPath(model, null, 0, this.dpr), BORDER);
+  }
 
+  drawSolidHover(model, colors, hoverRoot) {
+    const { ctx } = this;
     ctx.fillStyle = DIM;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.strokePath(this.bondPath(model, null), SKELETON_FAINT, this.bondWidth());
 
     const [r, g, b] = PALETTE_RGB[colors.of(hoverRoot)];
     this.fillCells(model, colors, hoverRoot, 0.28);
-    this.strokePath(this.borderPath(model, hoverRoot, 0), `rgb(${r}, ${g}, ${b})`, 1.5 * this.dpr);
+    this.fillPath(this.borderPath(model, hoverRoot, 0, 1.5 * this.dpr), `rgb(${r}, ${g}, ${b})`);
     this.strokePath(this.bondPath(model, hoverRoot), SKELETON, this.bondWidth());
     this.fillPath(this.dotPath(model, hoverRoot), SKELETON);
   }
 
-  drawSkeleton(model, colors, hoverRoot) {
+  drawSkeletonBase(model, colors) {
     const inset = Math.max(0.5, this.cell * 0.08);
-    const paths = this.coloredBorderPaths(model, colors, inset);
+    const paths = this.coloredBorderPaths(model, colors, inset, this.dpr);
     for (let k = 0; k < paths.length; k++) {
       const [r, g, b] = PALETTE_RGB[k];
-      this.strokePath(paths[k], `rgba(${r}, ${g}, ${b}, 0.5)`, this.dpr);
+      this.fillPath(paths[k], `rgba(${r}, ${g}, ${b}, 0.5)`);
     }
     this.strokePath(this.bondPath(model, null), SKELETON, this.bondWidth());
     this.fillPath(this.dotPath(model, null), SKELETON);
-    if (hoverRoot === null) return;
+  }
 
+  drawSkeletonHover(model, colors, hoverRoot) {
     this.fillCells(model, colors, hoverRoot, 0.3);
     this.strokePath(this.bondPath(model, hoverRoot), colors.hex(hoverRoot), this.bondWidth() * 1.4);
   }
@@ -164,29 +188,31 @@ export class Renderer {
     }
   }
 
-  addSide(path, x, y, d, inset) {
+  /** One cell side as a thin rectangle of the given width, centred on the (inset) cell edge. */
+  addSide(path, x, y, d, inset, width) {
     const c = this.cell;
     const x0 = x * c + inset;
     const y0 = y * c + inset;
     const x1 = (x + 1) * c - inset;
     const y1 = (y + 1) * c - inset;
+    const h = width / 2;
     switch (d) {
-      case 0: path.moveTo(x1, y0); path.lineTo(x1, y1); break;
-      case 1: path.moveTo(x0, y0); path.lineTo(x0, y1); break;
-      case 2: path.moveTo(x0, y1); path.lineTo(x1, y1); break;
-      default: path.moveTo(x0, y0); path.lineTo(x1, y0);
+      case 0: path.rect(x1 - h, y0 - h, width, y1 - y0 + width); break;
+      case 1: path.rect(x0 - h, y0 - h, width, y1 - y0 + width); break;
+      case 2: path.rect(x0 - h, y1 - h, x1 - x0 + width, width); break;
+      default: path.rect(x0 - h, y0 - h, x1 - x0 + width, width);
     }
   }
 
-  borderPath(model, onlyRoot, inset) {
+  borderPath(model, onlyRoot, inset, width) {
     const path = new Path2D();
-    this.eachBoundarySide(model, onlyRoot, (x, y, d) => this.addSide(path, x, y, d, inset));
+    this.eachBoundarySide(model, onlyRoot, (x, y, d) => this.addSide(path, x, y, d, inset, width));
     return path;
   }
 
-  coloredBorderPaths(model, colors, inset) {
+  coloredBorderPaths(model, colors, inset, width) {
     const paths = PALETTE.map(() => new Path2D());
-    this.eachBoundarySide(model, null, (x, y, d, root) => this.addSide(paths[colors.of(root)], x, y, d, inset));
+    this.eachBoundarySide(model, null, (x, y, d, root) => this.addSide(paths[colors.of(root)], x, y, d, inset, width));
     return paths;
   }
 
