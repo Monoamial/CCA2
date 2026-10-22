@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cluster–cluster aggregation</title>
+  <meta name="description" content="Interactive simulation of cluster–cluster aggregation on the periodic square lattice." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">Spanning forests of the torus</p>
+        <h1>Cluster–cluster aggregation</h1>
+      </div>
+      <nav class="masthead-links">
+        <a href="compute.html">Slim compute →</a>
+      </nav>
+    </header>
+
+    <div class="layout">
+      <aside class="panel controls">
+        <h2>Model</h2>
+
+        <label class="control">
+          <span class="control-label">Box side <em>L</em></span>
+          <input id="L" type="number" min="4" max="300" step="1" value="64" />
+          <input id="L-range" type="range" min="4" max="300" step="1" value="64" />
+        </label>
+
+        <label class="control">
+          <span class="control-label">Rate exponent <em>α</em></span>
+          <input id="alpha" type="number" min="-3" max="5" step="0.1" value="1" />
+          <input id="alpha-range" type="range" min="-3" max="5" step="0.1" value="1" />
+        </label>
+
+        <label class="control">
+          <span class="control-label">Density <em>p</em></span>
+          <input id="density" type="number" min="0" max="1" step="0.01" value="0.3" />
+          <input id="density-range" type="range" min="0" max="1" step="0.01" value="0.3" />
+        </label>
+
+        <fieldset class="control choice">
+          <legend class="control-label">Neighbour sampling</legend>
+          <label><input type="radio" name="sampling" value="directional" checked /> Directional</label>
+          <label><input type="radio" name="sampling" value="isotropic" /> Isotropic</label>
+        </fieldset>
+
+        <label class="control">
+          <span class="control-label">Seed</span>
+          <span class="inline">
+            <input id="seed" type="text" value="1" />
+            <button id="random-seed" type="button" class="small" title="Random seed">⟳</button>
+          </span>
+        </label>
+
+        <button id="reset" type="button" class="secondary">Reset</button>
+
+        <h2>Playback</h2>
+        <div class="button-row">
+          <button id="play" type="button" class="primary">Play</button>
+          <button id="back" type="button" class="secondary" title="One event back (←)">◀ Step</button>
+          <button id="step" type="button" class="secondary" title="One event forward (→)">Step ▶</button>
+          <button id="skip" type="button" class="secondary">Skip to end</button>
+        </div>
+        <label class="control">
+          <span class="control-label">Speed <span id="speed-value" class="value"></span></span>
+          <input id="speed" type="range" min="0" max="4.3" step="0.01" value="2" />
+        </label>
+        <p class="status" id="status">paused</p>
+
+        <h2>View</h2>
+        <fieldset class="control choice">
+          <label><input type="radio" name="view" value="solid" checked /> Solid map</label>
+          <label><input type="radio" name="view" value="skeleton" /> Bond skeletons</label>
+        </fieldset>
+
+        <h2>Two points</h2>
+        <div class="points">
+          <span class="point-tag a">A</span>
+          <input id="ax" type="number" min="0" step="1" placeholder="x" />
+          <input id="ay" type="number" min="0" step="1" placeholder="y" />
+          <span class="point-tag b">B</span>
+          <input id="bx" type="number" min="0" step="1" placeholder="x" />
+          <input id="by" type="number" min="0" step="1" placeholder="y" />
+        </div>
+        <button id="clear-points" type="button" class="secondary">Clear points</button>
+      </aside>
+
+      <section class="panel stage">
+        <canvas id="lattice" aria-label="Aggregation lattice"></canvas>
+      </section>
+
+      <aside class="panel readouts">
+        <h2>State</h2>
+        <dl>
+          <dt>Time <em>t</em></dt><dd id="read-time">0</dd>
+          <dt>Merges</dt><dd id="read-merges">0</dd>
+          <dt>Clusters</dt><dd id="read-clusters">0</dd>
+          <dt>Largest cluster</dt><dd id="read-largest">1</dd>
+          <dt>Occupied sites</dt><dd id="read-occupied">—</dd>
+          <dt>Translations</dt><dd id="read-moves">—</dd>
+          <dt>Hovered cluster</dt><dd id="read-hover">—</dd>
+        </dl>
+        <h2>Last event</h2>
+        <p class="last-event" id="read-last">—</p>
+        <h2>Points</h2>
+        <dl>
+          <dt>Cluster size at A</dt><dd id="read-size-a">—</dd>
+          <dt>Cluster size at B</dt><dd id="read-size-b">—</dd>
+          <dt>Graph distance A–B</dt><dd id="read-distance">—</dd>
+        </dl>
+      </aside>
+    </div>
+  </main>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
