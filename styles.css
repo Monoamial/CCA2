@@ -91,7 +91,6 @@ progress { flex: 1; min-width: 120px; height: 8px; accent-color: var(--accent); 
 .results .toolbar label { display: inline-flex; align-items: center; gap: 6px; }
 .results .toolbar em { font-family: Georgia, "Times New Roman", serif; }
 .results select { padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
-.fit-range input { width: 76px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; font-family: var(--mono); font-size: 12px; }
 .plot { width: 100%; height: 300px; display: block; background: #fff; border: 1px solid var(--line); border-radius: 4px; cursor: default; image-rendering: auto; }
 #histogram { height: 240px; }
 .summary { font: 500 12px var(--mono); color: var(--muted); margin: 0 0 8px; }

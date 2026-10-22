@@ -66,13 +66,12 @@ horizon is the time at which a pilot shot reaches a single cluster) and two
 sites A, B. Outputs:
 
 - time series (mean ± standard error over shots) of the cluster size at A (0
-  when vacant), P(A and B connected) and, for `p < 1`, P(A occupied), with
-  toggles for log axes and a least-squares power-law fit `C·t^β` over a chosen
-  time window;
+  when vacant), P(A and B connected) and, for `p < 1`, P(A occupied), with an
+  optional least-squares line;
 - the distribution over shots of the graph distance between A and B at the
   first moment they are connected (for `p = 1` the tree path never changes
   afterwards), together with the fraction of shots that connect before the
   horizon and the mean contact time;
 - the mean first-contact graph distance between (0, 0) and (n, 0) against the
-  separation n = 1 … ⌊L/2⌋, with a power-law fit `C·n^β`;
+  separation n = 1 … ⌊L/2⌋, with an optional least-squares line;
 - CSV download of all three.

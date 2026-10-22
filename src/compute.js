@@ -12,17 +12,11 @@ const ui = {
   results: $('results'),
   summary: $('summary'),
   series: $('series'),
-  logX: $('log-x'),
-  logY: $('log-y'),
   fit: $('fit'),
-  fitFrom: $('fit-from'),
-  fitTo: $('fit-to'),
   fitText: $('fit-text'),
   chart: $('chart'),
   histogram: $('histogram'),
   distanceText: $('distance-text'),
-  scanLogX: $('scan-log-x'),
-  scanLogY: $('scan-log-y'),
   scanFit: $('scan-fit'),
   scanText: $('scan-text'),
   scanChart: $('scan-chart'),
@@ -106,144 +100,103 @@ function showResult() {
   for (const option of ui.series.options) option.hidden = !!SERIES[option.value].needsVacancies && density >= 1;
   if (ui.series.selectedOptions[0].hidden) ui.series.value = 'size';
 
-  // Default fit window: the time grid where the mean is strictly between its extremes.
-  const positive = result.series.filter((r) => r.t > 0);
-  ui.fitFrom.value = fmt(positive[0].t);
-  ui.fitTo.value = fmt(positive[positive.length - 1].t);
-  ui.logX.checked = params.logSpaced;
-  ui.logY.checked = params.logSpaced;
-
   drawChart();
   drawHistogram();
   drawScan();
 }
 
-/** Least-squares line through (log x, log y): y ≈ C x^β. Points are {x, v: {mean, se}}. */
-function powerLawFit(points) {
-  const usable = points.filter((p) => p.x > 0 && p.v.mean > 0);
-  if (usable.length < 2) return null;
+/** Ordinary least-squares line y ≈ a + b·x through the means. Points are {x, v: {mean, se}}. */
+function linearFit(points) {
+  const n = points.length;
+  if (n < 2) return null;
   let sx = 0, sy = 0, sxx = 0, sxy = 0;
-  for (const p of usable) {
-    const x = Math.log(p.x);
-    const y = Math.log(p.v.mean);
-    sx += x; sy += y; sxx += x * x; sxy += x * y;
+  for (const p of points) {
+    sx += p.x; sy += p.v.mean; sxx += p.x * p.x; sxy += p.x * p.v.mean;
   }
-  const n = usable.length;
   const denom = n * sxx - sx * sx;
   if (denom === 0) return null;
-  const beta = (n * sxy - sx * sy) / denom;
-  const logC = (sy - beta * sx) / n;
+  const slope = (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
   let ssRes = 0, ssTot = 0;
   const yBar = sy / n;
-  for (const p of usable) {
-    const y = Math.log(p.v.mean);
-    ssRes += (y - logC - beta * Math.log(p.x)) ** 2;
-    ssTot += (y - yBar) ** 2;
+  for (const p of points) {
+    ssRes += (p.v.mean - intercept - slope * p.x) ** 2;
+    ssTot += (p.v.mean - yBar) ** 2;
   }
-  return { beta, C: Math.exp(logC), r2: ssTot > 0 ? 1 - ssRes / ssTot : 1, n, xMin: usable[0].x };
+  return { slope, intercept, r2: ssTot > 0 ? 1 - ssRes / ssTot : 1, n };
 }
 
-function fitStats(el, enabled, fit, variable) {
+function fitStats(el, enabled, fit) {
   if (!enabled) setStats(el, []);
-  else if (!fit) setStats(el, [['fit', `needs ≥ 2 points with ${variable} > 0`]]);
-  else setStats(el, [['β', fit.beta.toFixed(3)], ['C', fmt(fit.C)], ['R²', fit.r2.toFixed(3)], ['points', fit.n]]);
+  else if (!fit) setStats(el, [['fit', 'needs ≥ 2 points']]);
+  else setStats(el, [['slope', fmt(fit.slope)], ['intercept', fmt(fit.intercept)], ['R²', fit.r2.toFixed(3)], ['points', fit.n]]);
 }
 
 function drawChart() {
   const series = SERIES[ui.series.value];
-  const fitFrom = Number(ui.fitFrom.value);
-  const fitTo = Number(ui.fitTo.value);
   const pts = result.series.map((r) => ({ x: r.t, v: series.get(r) }));
-  const fit = ui.fit.checked ? powerLawFit(pts.filter((p) => p.x >= fitFrom && p.x <= fitTo)) : null;
-  fitStats(ui.fitText, ui.fit.checked, fit, 't');
-  plotSeries(ui.chart, pts, {
-    logX: ui.logX.checked,
-    logY: ui.logY.checked,
-    fit,
-    title: `${series.label}${ui.logX.checked ? ' · log t' : ''}${ui.logY.checked ? ' · log y' : ''}`,
-    markers: false,
-  });
+  const fit = ui.fit.checked ? linearFit(pts) : null;
+  fitStats(ui.fitText, ui.fit.checked, fit);
+  plotSeries(ui.chart, pts, { fit, title: `${series.label} vs t`, markers: false });
 }
 
 function drawScan() {
   const pts = result.scan.map((r) => ({ x: r.n, v: r.dist }));
-  const fit = ui.scanFit.checked ? powerLawFit(pts) : null;
+  const fit = ui.scanFit.checked ? linearFit(pts) : null;
   if (pts.length === 0) setStats(ui.scanText, [['data', 'no pair (0, 0)–(n, 0) ever connected']]);
-  else fitStats(ui.scanText, ui.scanFit.checked, fit, 'n');
-  plotSeries(ui.scanChart, pts, {
-    logX: ui.scanLogX.checked,
-    logY: ui.scanLogY.checked,
-    fit,
-    title: `mean graph distance (0, 0) → (n, 0)${ui.scanLogX.checked ? ' · log n' : ''}${ui.scanLogY.checked ? ' · log D' : ''}`,
-    markers: true,
-  });
+  else fitStats(ui.scanText, ui.scanFit.checked, fit);
+  plotSeries(ui.scanChart, pts, { fit, title: 'mean graph distance (0, 0) → (n, 0) vs n', markers: true });
 }
 
-/**
- * Mean ± standard error against x, with optional log axes and a power-law
- * fit. Points are {x, v: {mean, se}}; markers draws a dot per point.
- */
-function plotSeries(canvas, allPts, { logX, logY, fit, title, markers }) {
-  const pts = allPts.filter((p) => (!logX || p.x > 0) && (!logY || p.v.mean > 0));
+/** Mean ± standard error against x, with an optional fitted line. Points are {x, v: {mean, se}}. */
+function plotSeries(canvas, pts, { fit, title, markers }) {
   const plot = setupCanvas(canvas);
   if (pts.length === 0) return;
   const { ctx, W, H, dpr } = plot;
-  const fx = logX ? Math.log10 : (x) => x;
-  const fy = logY ? Math.log10 : (y) => y;
-  const xs = pts.map((p) => fx(p.x));
-  const xMin = Math.min(...xs);
-  const xMax = Math.max(...xs);
-  const yLo = pts.map((p) => fy(logY ? Math.max(p.v.mean - p.v.se, p.v.mean / 2) : Math.max(0, p.v.mean - p.v.se)));
-  const yHi = pts.map((p) => fy(p.v.mean + p.v.se));
-  const yMin = logY ? Math.min(...yLo) : 0;
-  const yMax = Math.max(...yHi, yMin + 1e-9);
+  const xMin = Math.min(...pts.map((p) => p.x));
+  const xMax = Math.max(...pts.map((p) => p.x));
+  const yLo = pts.map((p) => Math.max(0, p.v.mean - p.v.se));
+  const yHi = pts.map((p) => p.v.mean + p.v.se);
+  const yMax = Math.max(...yHi, 1e-9);
   const pad = { l: 64 * dpr, r: 16 * dpr, t: 22 * dpr, b: 36 * dpr };
   const sx = (x) => pad.l + ((x - xMin) / (xMax - xMin || 1)) * (W - pad.l - pad.r);
-  const sy = (y) => H - pad.b - ((y - yMin) / (yMax - yMin || 1)) * (H - pad.t - pad.b);
+  const sy = (y) => H - pad.b - (y / yMax) * (H - pad.t - pad.b);
 
   drawAxes(plot, pad, {
-    xTicks: ticks(xMin, xMax, 5).map((x) => [sx(x), fmt(logX ? 10 ** x : x)]),
-    yTicks: ticks(yMin, yMax, 5).map((y) => [sy(y), fmt(logY ? 10 ** y : y)]),
+    xTicks: ticks(xMin, xMax, 5).map((x) => [sx(x), fmt(x)]),
+    yTicks: ticks(0, yMax, 5).map((y) => [sy(y), fmt(y)]),
     title,
   });
 
   // ±1 s.e. band, then the mean
   ctx.fillStyle = 'rgba(42, 157, 143, 0.18)';
   ctx.beginPath();
-  pts.forEach((p, i) => ctx[i ? 'lineTo' : 'moveTo'](sx(xs[i]), sy(yHi[i])));
-  for (let i = pts.length - 1; i >= 0; i--) ctx.lineTo(sx(xs[i]), sy(yLo[i]));
+  pts.forEach((p, i) => ctx[i ? 'lineTo' : 'moveTo'](sx(p.x), sy(yHi[i])));
+  for (let i = pts.length - 1; i >= 0; i--) ctx.lineTo(sx(pts[i].x), sy(yLo[i]));
   ctx.closePath();
   ctx.fill();
   ctx.strokeStyle = ACCENT;
   ctx.lineWidth = 1.6 * dpr;
   ctx.beginPath();
-  pts.forEach((p, i) => ctx[i ? 'lineTo' : 'moveTo'](sx(xs[i]), sy(fy(p.v.mean))));
+  pts.forEach((p, i) => ctx[i ? 'lineTo' : 'moveTo'](sx(p.x), sy(p.v.mean)));
   ctx.stroke();
   if (markers) {
     ctx.fillStyle = ACCENT;
-    for (let i = 0; i < pts.length; i++) {
+    for (const p of pts) {
       ctx.beginPath();
-      ctx.arc(sx(xs[i]), sy(fy(pts[i].v.mean)), 3 * dpr, 0, 2 * Math.PI);
+      ctx.arc(sx(p.x), sy(p.v.mean), 3 * dpr, 0, 2 * Math.PI);
       ctx.fill();
     }
   }
 
   if (fit) {
+    const clampY = (y) => Math.min(yMax, Math.max(0, y));
     ctx.strokeStyle = FIT;
     ctx.lineWidth = 1.4 * dpr;
     ctx.setLineDash([6 * dpr, 4 * dpr]);
     ctx.beginPath();
-    const xLo = pts[0].x > 0 ? pts[0].x : fit.xMin;
-    const xHi = pts[pts.length - 1].x;
-    const steps = 80;
-    let started = false;
-    for (let i = 0; i <= steps; i++) {
-      const x = logX ? xLo * Math.pow(xHi / xLo, i / steps) : xLo + ((xHi - xLo) * i) / steps;
-      const py = sy(fy(fit.C * Math.pow(x, fit.beta)));
-      if (py < pad.t - 2 * dpr) continue;
-      ctx[started ? 'lineTo' : 'moveTo'](sx(fx(x)), py);
-      started = true;
-    }
+    ctx.moveTo(sx(xMin), sy(clampY(fit.intercept + fit.slope * xMin)));
+    ctx.lineTo(sx(xMax), sy(clampY(fit.intercept + fit.slope * xMax)));
     ctx.stroke();
     ctx.setLineDash([]);
   }
@@ -477,8 +430,8 @@ ui.cancel.addEventListener('click', () => {
   stop();
   ui.progressText.textContent = 'cancelled';
 });
-[ui.series, ui.logX, ui.logY, ui.fit, ui.fitFrom, ui.fitTo].forEach((el) => el.addEventListener('change', drawChart));
-[ui.scanLogX, ui.scanLogY, ui.scanFit].forEach((el) => el.addEventListener('change', drawScan));
+[ui.series, ui.fit].forEach((el) => el.addEventListener('change', drawChart));
+ui.scanFit.addEventListener('change', drawScan);
 window.addEventListener('resize', () => {
   if (!result) return;
   drawChart();

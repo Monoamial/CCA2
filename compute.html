@@ -56,10 +56,7 @@
             <option value="pOccupied">P(A occupied)</option>
           </select>
         </label>
-        <label><input id="log-x" type="checkbox" /> log t</label>
-        <label><input id="log-y" type="checkbox" /> log y</label>
-        <label><input id="fit" type="checkbox" /> power-law fit <em>C·t<sup>β</sup></em></label>
-        <label class="fit-range">from <input id="fit-from" type="text" inputmode="decimal" /> to <input id="fit-to" type="text" inputmode="decimal" /></label>
+        <label><input id="fit" type="checkbox" checked /> linear fit</label>
       </div>
       <div id="fit-text" class="stats"></div>
       <canvas id="chart" class="plot"></canvas>
@@ -70,9 +67,7 @@
 
       <h2 class="chart-heading">Mean graph distance (0, 0) → (n, 0)</h2>
       <div class="toolbar">
-        <label><input id="scan-log-x" type="checkbox" /> log n</label>
-        <label><input id="scan-log-y" type="checkbox" /> log D</label>
-        <label><input id="scan-fit" type="checkbox" checked /> power-law fit <em>C·n<sup>β</sup></em></label>
+        <label><input id="scan-fit" type="checkbox" checked /> linear fit</label>
       </div>
       <div id="scan-text" class="stats"></div>
       <canvas id="scan-chart" class="plot"></canvas>
