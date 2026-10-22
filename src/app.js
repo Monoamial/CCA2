@@ -51,7 +51,7 @@ const state = {
   lastDensity: Number($('density').value),
   viewMode: 'solid',
   hoverRoot: null,
-  points: [null, null],
+  points: [null, null], // particle ids of A and B (they ride along when their cluster translates)
   nextPoint: 0,
   dirty: true,
   lastFrame: 0,
@@ -95,7 +95,7 @@ function resetModel() {
   state.hoverRoot = null;
   state.budget = 0;
   state.colorHistory = [];
-  state.points = state.points.map((v) => (v !== null && v < state.model.N ? v : null));
+  state.points = state.points.map((id) => (id !== null && id < state.model.N && state.model.siteOf[id] !== -1 ? id : null));
   syncPointInputs();
   setMode('paused');
   state.dirty = true;
@@ -158,12 +158,13 @@ function frame(now) {
 // --- rendering & readouts -------------------------------------------------------
 
 function render() {
-  const { model, colors, points } = state;
-  const connection = points[0] !== null && points[1] !== null ? model.distance(points[0], points[1]) : null;
+  const { model, colors } = state;
+  const sites = pointSites();
+  const connection = sites[0] !== null && sites[1] !== null ? model.distance(sites[0], sites[1]) : null;
   state.renderer.draw(model, colors, {
     mode: state.viewMode,
     hoverRoot: state.hoverRoot,
-    points,
+    points: sites,
     path: connection ? connection.path : null,
     lastEvent: model.lastEvent(),
   });
@@ -171,7 +172,9 @@ function render() {
 }
 
 function updateReadouts(connection) {
-  const { model, points } = state;
+  const { model } = state;
+  const points = pointSites();
+  syncPointInputs();
   ui.readTime.textContent = model.t.toFixed(3);
   ui.readMerges.textContent = `${model.merges} / ${Math.max(0, model.occupied - 1)}`;
   ui.readClusters.textContent = model.clusterCount;
@@ -198,22 +201,37 @@ function describeEvent(model, event) {
 }
 
 // --- points ------------------------------------------------------------------------
+// A and B mark particles, not sites: the marker follows the vertex it was placed on.
 
+/** Current sites of the marked particles (null when unset). */
+function pointSites() {
+  return state.points.map((id) => (id === null ? null : state.model.siteOf[id]));
+}
+
+/** Mark the particle at site v (ignored when v is vacant). */
 function setPoint(i, v) {
-  state.points[i] = v;
+  const id = state.model.particleAt[v];
+  if (id === -1) return false;
+  state.points[i] = id;
   syncPointInputs();
   state.dirty = true;
+  return true;
 }
 
+/** Keep the coordinate inputs showing where the marked particles are now (unless being edited). */
 function syncPointInputs() {
-  const { model, points } = state;
-  const [ax, ay] = points[0] === null ? ['', ''] : model.coords(points[0]);
-  const [bx, by] = points[1] === null ? ['', ''] : model.coords(points[1]);
-  ui.ax.value = ax; ui.ay.value = ay;
-  ui.bx.value = bx; ui.by.value = by;
+  const { model } = state;
+  const sites = pointSites();
+  const pairs = [[ui.ax, ui.ay, sites[0]], [ui.bx, ui.by, sites[1]]];
+  for (const [xi, yi, v] of pairs) {
+    if (document.activeElement === xi || document.activeElement === yi) continue;
+    const [x, y] = v === null ? ['', ''] : model.coords(v);
+    if (String(xi.value) !== String(x)) xi.value = x;
+    if (String(yi.value) !== String(y)) yi.value = y;
+  }
 }
 
-/** Parse typed coordinates; a half-typed point stays null without clearing the inputs. */
+/** Parse typed coordinates: mark the particle currently at that site; vacant or half-typed stays unset. */
 function readPointInputs() {
   const parse = (xi, yi) => {
     if (xi.value === '' || yi.value === '') return null;
@@ -221,9 +239,11 @@ function readPointInputs() {
     const y = clampInt(yi.value, 0, state.model.L - 1);
     xi.value = x;
     yi.value = y;
-    return state.model.index(x, y);
+    const id = state.model.particleAt[state.model.index(x, y)];
+    return id === -1 ? null : id;
   };
   state.points = [parse(ui.ax, ui.ay), parse(ui.bx, ui.by)];
+  syncPointInputs();
   state.dirty = true;
 }
 
@@ -285,8 +305,7 @@ ui.canvas.addEventListener('mouseleave', () => {
 ui.canvas.addEventListener('click', (e) => {
   const cell = state.renderer.cellAt(e);
   if (!cell) return;
-  setPoint(state.nextPoint, state.model.index(cell[0], cell[1]));
-  state.nextPoint = 1 - state.nextPoint;
+  if (setPoint(state.nextPoint, state.model.index(cell[0], cell[1]))) state.nextPoint = 1 - state.nextPoint;
 });
 
 window.addEventListener('keydown', (e) => {

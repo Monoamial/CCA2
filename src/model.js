@@ -18,6 +18,10 @@
 // index of their first vertex; `clusterAt[site]` holds the label (−1 when
 // vacant) and small-to-large relabelling keeps merges cheap.
 //
+// Each vertex (particle) keeps a fixed identity — its initial site index — so
+// it can be followed as its cluster translates: `siteOf[id]` is where it is
+// now and `particleAt[site]` is who is there.
+//
 // Every event is recorded in a history so the process can be stepped backwards
 // (undo) and forwards again (replay) along the same trajectory; fresh
 // randomness is only consumed once the replay reaches the end of the history.
@@ -99,6 +103,8 @@ export class Aggregation {
     this.voidEvents = 0;
 
     this.clusterAt = new Int32Array(this.N).fill(-1); // cluster label per site, −1 when vacant
+    this.particleAt = new Int32Array(this.N).fill(-1); // particle id per site, −1 when vacant
+    this.siteOf = new Int32Array(this.N).fill(-1); // current site per particle id, −1 if no such particle
     this.bonds = new Uint8Array(this.N); // bit d set ⇔ bond from the site to its neighbour in direction d
     this.size = new Int32Array(this.N); // valid at cluster labels
     this.members = new Array(this.N).fill(null); // site list, valid at cluster labels
@@ -107,6 +113,8 @@ export class Aggregation {
     for (let v = 0; v < this.N; v++) {
       if (this.density < 1 && this.rng.uniform() >= this.density) continue;
       this.clusterAt[v] = v;
+      this.particleAt[v] = v;
+      this.siteOf[v] = v;
       this.members[v] = [v];
       this.size[v] = 1;
       this.rates.set(v, 1);
@@ -120,6 +128,7 @@ export class Aggregation {
     this.stamp = new Int32Array(this.N); // scratch marks for neighbour enumeration / BFS
     this.stampId = 0;
     this.scratchBonds = new Uint8Array(this.N);
+    this.scratchIds = new Int32Array(this.N);
     this.bfsPrev = new Int32Array(this.N);
     this.bfsQueue = new Int32Array(this.N);
   }
@@ -346,17 +355,23 @@ export class Aggregation {
   /** Rigidly translate a cluster by one lattice step; bonds are direction bits, so they move unchanged. */
   translate(root, d) {
     const list = this.members[root];
-    const saved = this.scratchBonds;
+    const savedBonds = this.scratchBonds;
+    const savedIds = this.scratchIds;
     for (let i = 0; i < list.length; i++) {
-      saved[i] = this.bonds[list[i]];
-      this.bonds[list[i]] = 0;
-      this.clusterAt[list[i]] = -1;
+      const v = list[i];
+      savedBonds[i] = this.bonds[v];
+      savedIds[i] = this.particleAt[v];
+      this.bonds[v] = 0;
+      this.clusterAt[v] = -1;
+      this.particleAt[v] = -1;
     }
     for (let i = 0; i < list.length; i++) {
       const target = this.neighbor(list[i], d);
       list[i] = target;
       this.clusterAt[target] = root;
-      this.bonds[target] = saved[i];
+      this.bonds[target] = savedBonds[i];
+      this.particleAt[target] = savedIds[i];
+      this.siteOf[savedIds[i]] = target;
     }
   }
 

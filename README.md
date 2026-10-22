@@ -55,9 +55,11 @@ the (unique) tree path. The run ends when a single cluster remains.
   event" readout.
 - Solid map or bond-skeleton view. Hovering a cluster dims the map and shows
   the skeletons, with the hovered cluster's skeleton highlighted.
-- Click the lattice (or type coordinates) to place A and B; the panel shows the
-  size of each cluster (0 at a vacant site) and the graph distance (`null` if
-  not connected), and the tree path is drawn.
+- Click the lattice (or type coordinates) to mark two vertices A and B. The
+  marks follow the vertices they were placed on, so for `p < 1` they move with
+  their clusters; clicking a vacant site does nothing. The panel shows the size
+  of each cluster and the graph distance (`null` if not connected), and the
+  tree path is drawn.
 
 ## Compute page
 
